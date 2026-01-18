@@ -16,5 +16,4 @@ Authorization: Bearer {{accessToken}}
 ### Get Transactions
 GET /api/transactions
 Host: localhost:8080
-Content-Type: application/json
 Authorization: Bearer {{accessToken}}
