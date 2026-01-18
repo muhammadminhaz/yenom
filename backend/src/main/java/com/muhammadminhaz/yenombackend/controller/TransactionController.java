@@ -27,7 +27,7 @@ public class TransactionController {
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<CreateTransactionResponse> createTransaction(
             @Valid @RequestBody CreateTransactionRequest request) {
         CreateTransactionResponse response = transactionService.createTransaction(request);

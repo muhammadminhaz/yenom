@@ -1,5 +1,5 @@
 ### Create transaction
-POST /api/transactions
+POST /api/transactions/create
 Host: localhost:8080
 Content-Type: application/json
 Authorization: Bearer {{accessToken}}
@@ -13,4 +13,8 @@ Authorization: Bearer {{accessToken}}
   "type": "EXPENSE"
 }
 
-###
+### Get Transactions
+GET /api/transactions
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
