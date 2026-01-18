@@ -1,0 +1,16 @@
+### Create transaction
+POST /api/transactions
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "amount": 450.75,
+  "currency": "USD",
+  "transactionDate": "2026-01-18",
+  "description": "Grocery shopping at Walmart",
+  "category": "Groceries",
+  "type": "EXPENSE"
+}
+
+###

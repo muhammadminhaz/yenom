@@ -77,13 +77,8 @@ public class AuthService {
     }
 
     public ProfileResponse getCurrentUserProfile() {
-        // Get the authenticated user from SecurityContext
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-
-        // Fetch user from DB
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        // Get the authenticated user
+        User user = getUser();
 
         // Map to ProfileResponse DTO
         return ProfileResponse.builder()
@@ -95,5 +90,12 @@ public class AuthService {
                 .country(user.getCountry())
                 .continent(user.getContinent())
                 .build();
+    }
+
+    public User getUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 }

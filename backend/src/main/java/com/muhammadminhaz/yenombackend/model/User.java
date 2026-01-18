@@ -4,7 +4,11 @@ import com.fasterxml.uuid.Generators;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -44,7 +48,6 @@ public class User {
     @Column(nullable = false)
     private String role;
 
-    // New fields
     @NotBlank(message = "First name is required")
     @Size(max = 50)
     @Column(nullable = false, length = 50)
@@ -66,6 +69,14 @@ public class User {
     @Size(max = 100)
     @Column(length = 100)
     private String continent;
+
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
 
     @PrePersist
     public void prePersist() {

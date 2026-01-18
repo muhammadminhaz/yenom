@@ -11,6 +11,8 @@ services:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/
+    networks:
+      - yenom-network
 
   yenom:
     image: yenom:latest
@@ -22,13 +24,19 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME}
       SPRING_DATASOURCE_USERNAME: ${DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
       JWT_SECRET: ${JWT_SECRET}
     ports:
       - "8080:8080"
     build:
       context: ./backend
       dockerfile: Dockerfile
+    networks:
+      - yenom-network
+
+networks:
+  yenom-network:
+    driver: bridge
 
 volumes:
   db_data:
