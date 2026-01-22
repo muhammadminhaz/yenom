@@ -17,3 +17,24 @@ Authorization: Bearer {{accessToken}}
 GET /api/transactions
 Host: localhost:8080
 Authorization: Bearer {{accessToken}}
+
+### Update Transaction
+PUT /api/transactions/89c40265-f794-11f0-bfdc-cf4175c34812
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "amount": 500.00,
+  "currency": "USD",
+  "transactionDate": "2026-01-19",
+  "description": "Updated grocery shopping",
+  "category": "Food",
+  "type": "EXPENSE",
+  "status": "COMPLETED"
+}
+
+### Delete Transaction
+DELETE /api/transactions/89c40265-f794-11f0-bfdc-cf4175c34812
+Host: localhost:8080
+Authorization: Bearer {{accessToken}}

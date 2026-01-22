@@ -1,9 +1,6 @@
 package com.muhammadminhaz.yenombackend.controller;
 
-import com.muhammadminhaz.yenombackend.dto.CreateTransactionRequest;
-import com.muhammadminhaz.yenombackend.dto.CreateTransactionResponse;
-import com.muhammadminhaz.yenombackend.dto.GetTransactionsResponse;
-import com.muhammadminhaz.yenombackend.dto.TransactionsPageResponse;
+import com.muhammadminhaz.yenombackend.dto.*;
 import com.muhammadminhaz.yenombackend.model.Transaction;
 import com.muhammadminhaz.yenombackend.service.AuthService;
 import com.muhammadminhaz.yenombackend.service.TransactionService;
@@ -62,6 +59,37 @@ public class TransactionController {
     ) {
         UUID userId = authService.getUser().getId();
         return transactionService.getUserTransactions(userId, page, size);
+    }
+
+    @Operation(summary = "Update a transaction",
+            description = "Updates an existing transaction. Only the owner can update the transaction.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Transaction updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input data"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "404", description = "Transaction not found"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @PutMapping("/{id}")
+    public ResponseEntity<UpdateTransactionResponse> updateTransaction(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateTransactionRequest request) {
+        UpdateTransactionResponse response = transactionService.updateTransaction(id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Delete a transaction",
+            description = "Deletes an existing transaction. Only the owner can delete the transaction.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Transaction deleted successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "404", description = "Transaction not found"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTransaction(@PathVariable UUID id) {
+        transactionService.deleteTransaction(id);
+        return ResponseEntity.noContent().build();
     }
 
 }
