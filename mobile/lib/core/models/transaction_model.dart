@@ -38,6 +38,11 @@ class TransactionModel extends HiveObject {
   @HiveField(10)
   final DateTime updatedAt;
 
+  /// False until this transaction has been uploaded to the cloud backend.
+  /// Existing records read from an old Hive box default to false (unsynced).
+  @HiveField(11)
+  final bool isSynced;
+
   TransactionModel({
     required this.id,
     required this.userId,
@@ -50,5 +55,36 @@ class TransactionModel extends HiveObject {
     required this.status,
     required this.createdAt,
     required this.updatedAt,
+    this.isSynced = false,
   });
+
+  TransactionModel copyWith({
+    String? id,
+    String? userId,
+    double? amount,
+    String? currency,
+    DateTime? transactionDate,
+    String? description,
+    String? category,
+    TransactionType? type,
+    TransactionStatus? status,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isSynced,
+  }) {
+    return TransactionModel(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      amount: amount ?? this.amount,
+      currency: currency ?? this.currency,
+      transactionDate: transactionDate ?? this.transactionDate,
+      description: description ?? this.description,
+      category: category ?? this.category,
+      type: type ?? this.type,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isSynced: isSynced ?? this.isSynced,
+    );
+  }
 }

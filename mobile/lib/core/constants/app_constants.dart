@@ -15,6 +15,7 @@ class AppConstants {
   static const double spaceXXXL = spaceXXL * goldenRatio; // ~89.0
 
   // Border Radius based on Golden Ratio
+  static const double radiusXS = spaceS; // ~8
   static const double radiusS = spaceM;
   static const double radiusM = spaceL;
   static const double radiusL = spaceXL;

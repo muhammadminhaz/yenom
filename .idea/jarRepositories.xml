@@ -12,9 +12,24 @@
       <option name="url" value="https://repo1.maven.org/maven2" />
     </remote-repository>
     <remote-repository>
+      <option name="id" value="SmartGWT official repo" />
+      <option name="name" value="SmartGWT official repo" />
+      <option name="url" value="http://www.smartclient.com/maven2" />
+    </remote-repository>
+    <remote-repository>
       <option name="id" value="jboss.community" />
       <option name="name" value="JBoss Community repository" />
       <option name="url" value="https://repository.jboss.org/nexus/content/repositories/public/" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="pricefx.internal" />
+      <option name="name" value="pricefx.internal" />
+      <option name="url" value="https://maven.pricefx.eu" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="Default repo" />
+      <option name="name" value="Default repo" />
+      <option name="url" value="http://repo1.maven.org/maven2" />
     </remote-repository>
   </component>
 </project>

@@ -1,4 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
+// Manually extended to add HiveField(11) isSynced — backward-compatible with
+// existing boxes (missing field defaults to false).
 
 part of 'transaction_model.dart';
 
@@ -28,13 +30,15 @@ class TransactionModelAdapter extends TypeAdapter<TransactionModel> {
       status: fields[8] as TransactionStatus,
       createdAt: fields[9] as DateTime,
       updatedAt: fields[10] as DateTime,
+      // Older records lack field 11 — treat them as unsynced.
+      isSynced: fields[11] == null ? false : fields[11] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, TransactionModel obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -56,7 +60,9 @@ class TransactionModelAdapter extends TypeAdapter<TransactionModel> {
       ..writeByte(9)
       ..write(obj.createdAt)
       ..writeByte(10)
-      ..write(obj.updatedAt);
+      ..write(obj.updatedAt)
+      ..writeByte(11)
+      ..write(obj.isSynced);
   }
 
   @override

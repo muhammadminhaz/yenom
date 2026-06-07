@@ -1,32 +1,54 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_constants.dart';
-import '../../widgets/neumorphic_container.dart';
-import 'transactions_list_screen.dart';
-import 'add_transaction_screen.dart';
-import '../profile/profile_screen.dart';
-import '../../core/services/database_service.dart';
-import '../../core/models/transaction_model.dart';
-import '../../core/models/transaction_enums.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-class DashboardScreen extends StatefulWidget {
+import '../../core/constants/app_constants.dart';
+import '../../core/constants/categories.dart';
+import '../../core/models/transaction_model.dart';
+import '../../core/models/transaction_enums.dart';
+import '../../core/services/database_service.dart';
+import '../../core/utils/app_logger.dart';
+import '../../widgets/neumorphic_container.dart';
+import '../profile/profile_screen.dart';
+import '../settings/settings_screen.dart';
+import '../suggestions/suggestion_banner_widget.dart';
+import 'add_transaction_screen.dart';
+import 'transaction_detail_screen.dart';
+import 'transactions_list_screen.dart';
+
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  static const _tag = 'DashboardScreen';
+
+  @override
+  void initState() {
+    super.initState();
+    AppLogger.d(_tag, 'Dashboard initialized');
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = DatabaseService.getCurrentUser();
     final transactions = DatabaseService.getAllTransactions();
-    
+
+    final now = DateTime.now();
+    final monthlyTxs = transactions
+        .where((t) => t.transactionDate.year == now.year && t.transactionDate.month == now.month)
+        .toList();
+
     double totalBalance = 0;
     double income = 0;
     double expenses = 0;
-    
-    for (var tx in transactions) {
+    double monthlyIncome = 0;
+    double monthlyExpenses = 0;
+
+    for (final tx in transactions) {
       if (tx.type == TransactionType.INCOME) {
         income += tx.amount;
         totalBalance += tx.amount;
@@ -36,21 +58,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
 
+    for (final tx in monthlyTxs) {
+      if (tx.type == TransactionType.INCOME) {
+        monthlyIncome += tx.amount;
+      } else {
+        monthlyExpenses += tx.amount;
+      }
+    }
+
+    final monthlySavePct = monthlyIncome > 0
+        ? ((monthlyIncome - monthlyExpenses) / monthlyIncome * 100).clamp(0, 100).toStringAsFixed(0)
+        : '—';
+
+    final categoryTotals = DatabaseService.getCategoryTotals(type: TransactionType.EXPENSE);
+    String topCategory = '—';
+    if (categoryTotals.isNotEmpty) {
+      topCategory = categoryTotals.entries
+          .reduce((a, b) => a.value > b.value ? a : b)
+          .key;
+    }
+
+    AppLogger.d(_tag, 'Stats: balance=$totalBalance income=$income expenses=$expenses topCat=$topCategory');
+
     return Scaffold(
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: AppConstants.spaceM, right: AppConstants.spaceM),
         child: FloatingActionButton(
           onPressed: () async {
-            await Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const AddTransactionScreen()),
+            AppLogger.d(_tag, 'FAB tapped — opening AddTransactionScreen');
+            final added = await Navigator.of(context).push<bool>(
+              MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
             );
-            setState(() {}); // Refresh after returning from add screen
+            if (added == true) {
+              AppLogger.i(_tag, 'Transaction added, refreshing dashboard');
+              setState(() {});
+            }
           },
           backgroundColor: AppColors.primaryGreen,
           elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppConstants.radiusM),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.radiusM)),
           child: Container(
             width: 60,
             height: 60,
@@ -59,10 +105,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  AppColors.primaryGreen,
-                  AppColors.primaryGreenDark,
-                ],
+                colors: [AppColors.primaryGreen, AppColors.primaryGreenDark],
               ),
               boxShadow: [
                 BoxShadow(
@@ -87,30 +130,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: AppConstants.spaceXL),
               _buildBalanceCard(context, totalBalance, income, expenses),
               const SizedBox(height: AppConstants.spaceXL),
-              _buildSummaryRow(context),
-              const SizedBox(height: AppConstants.spaceXL),
+              _buildSummaryRow(context, monthlySavePct, topCategory),
+              const SizedBox(height: AppConstants.spaceL),
+              const SuggestionBannerWidget(),
+              const SizedBox(height: AppConstants.spaceL),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Recent Transactions',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+                  Text('Recent Transactions', style: Theme.of(context).textTheme.titleLarge),
                   TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const TransactionsListScreen()),
+                    onPressed: () async {
+                      AppLogger.d(_tag, 'See All tapped');
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const TransactionsListScreen()),
                       );
+                      setState(() {});
                     },
-                    child: const Text(
-                      'See All',
-                      style: TextStyle(color: AppColors.primaryGreen),
-                    ),
+                    child: const Text('See All', style: TextStyle(color: AppColors.primaryGreen)),
                   ),
                 ],
               ),
               const SizedBox(height: AppConstants.spaceM),
-              _buildTransactionsList(transactions.reversed.take(5).toList()),
+              _buildRecentTransactions(context, transactions.reversed.take(5).toList()),
               const SizedBox(height: AppConstants.spaceXL),
             ],
           ),
@@ -126,53 +167,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Hello, $name!',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            Text(
-              'Welcome back to your wallet',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            Text('As-salamu alaykum,', style: Theme.of(context).textTheme.bodyMedium),
+            Text(name, style: Theme.of(context).textTheme.headlineMedium),
           ],
         ),
-        GestureDetector(
-          onTap: () async {
-            await Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const ProfileScreen()),
-            );
-            setState(() {}); // Refresh if profile changed
-          },
-          child: const NeumorphicContainer(
-            width: 50,
-            height: 50,
-            shape: BoxShape.circle,
-            child: Icon(Icons.person_outline, color: AppColors.primaryGreen),
-          ),
+        Row(
+          children: [
+            GestureDetector(
+              onTap: () async {
+                AppLogger.d(_tag, 'Settings tapped');
+                await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
+                setState(() {});
+              },
+              child: const NeumorphicContainer(
+                width: 44, height: 44,
+                shape: BoxShape.circle,
+                child: Icon(Icons.settings_outlined, color: AppColors.primaryGreen, size: 20),
+              ),
+            ),
+            const SizedBox(width: AppConstants.spaceS),
+            GestureDetector(
+              onTap: () async {
+                AppLogger.d(_tag, 'Profile tapped');
+                await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                );
+                setState(() {});
+              },
+              child: const NeumorphicContainer(
+                width: 44, height: 44,
+                shape: BoxShape.circle,
+                child: Icon(Icons.person_outline, color: AppColors.primaryGreen, size: 20),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildBalanceCard(BuildContext context, double total, double income, double expenses) {
-    final NumberFormat formatter = NumberFormat.currency(symbol: '\$');
-    
+  Widget _buildBalanceCard(
+      BuildContext context, double total, double income, double expenses) {
+    final f = NumberFormat.currency(symbol: '\$');
+
     return NeumorphicContainer(
       width: double.infinity,
       padding: const EdgeInsets.all(AppConstants.spaceXL),
       child: Column(
         children: [
-          Text(
-            'Total Balance',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          Text('Total Balance', style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: AppConstants.spaceS),
           Text(
-            formatter.format(total),
+            f.format(total),
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  color: AppColors.primaryGreen,
-                  fontSize: 36,
-                ),
+              color: total >= 0 ? AppColors.primaryGreen : AppColors.expenseRed,
+              fontSize: 36,
+            ),
           ),
           const SizedBox(height: AppConstants.spaceL),
           Row(
@@ -181,14 +233,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _buildBalanceIndicator(
                 context,
                 label: 'Income',
-                amount: formatter.format(income),
+                amount: f.format(income),
                 color: AppColors.incomeGreen,
                 icon: Icons.arrow_upward,
               ),
               _buildBalanceIndicator(
                 context,
                 label: 'Expenses',
-                amount: formatter.format(expenses),
+                amount: f.format(expenses),
                 color: AppColors.expenseRed,
                 icon: Icons.arrow_downward,
               ),
@@ -210,10 +262,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         Container(
           padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
           child: Icon(icon, color: color, size: 16),
         ),
         const SizedBox(width: AppConstants.spaceS),
@@ -221,20 +270,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label, style: const TextStyle(fontSize: 12)),
-            Text(
-              amount,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
+            Text(amount, style: TextStyle(fontWeight: FontWeight.bold, color: color)),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildSummaryRow(BuildContext context) {
+  Widget _buildSummaryRow(BuildContext context, String savePct, String topCategory) {
+    final isIslamic = AppCategories.isIslamic(topCategory);
     return Row(
       children: [
         Expanded(
@@ -245,7 +289,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const Icon(Icons.show_chart, color: AppColors.primaryGreen),
                 const SizedBox(height: AppConstants.spaceS),
                 Text('Monthly Save', style: Theme.of(context).textTheme.bodySmall),
-                const Text('25%', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  savePct == '—' ? '—' : '$savePct%',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ],
             ),
           ),
@@ -256,10 +303,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: const EdgeInsets.all(AppConstants.spaceM),
             child: Column(
               children: [
-                const Icon(Icons.pie_chart_outline, color: AppColors.primaryGreen),
+                Icon(
+                  AppCategories.iconFor(topCategory),
+                  color: AppColors.primaryGreen,
+                ),
                 const SizedBox(height: AppConstants.spaceS),
                 Text('Top Category', style: Theme.of(context).textTheme.bodySmall),
-                const Text('Food', style: TextStyle(fontWeight: FontWeight.bold)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        topCategory,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isIslamic) ...[
+                      const SizedBox(width: 4),
+                      const Text('☽', style: TextStyle(fontSize: 11, color: AppColors.primaryGreen)),
+                    ],
+                  ],
+                ),
               ],
             ),
           ),
@@ -268,12 +333,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildTransactionsList(List<TransactionModel> transactions) {
+  Widget _buildRecentTransactions(BuildContext context, List<TransactionModel> transactions) {
     if (transactions.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(AppConstants.spaceXL),
-          child: Text('No transactions yet'),
+          child: Text('No transactions yet. Tap + to add one.'),
         ),
       );
     }
@@ -282,59 +347,68 @@ class _DashboardScreenState extends State<DashboardScreen> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: transactions.length,
-      separatorBuilder: (context, index) => const SizedBox(height: AppConstants.spaceM),
-      itemBuilder: (context, index) {
-        final tx = transactions[index];
-        final bool isExpense = tx.type == TransactionType.EXPENSE;
-        final DateFormat dateFormat = DateFormat('yyyy-MM-dd');
+      separatorBuilder: (_, __) => const SizedBox(height: AppConstants.spaceM),
+      itemBuilder: (_, i) {
+        final tx = transactions[i];
+        final isExpense = tx.type == TransactionType.EXPENSE;
+        final isIslamic = AppCategories.isIslamic(tx.category);
+        final typeColor = isExpense ? AppColors.expenseRed : AppColors.incomeGreen;
+        final symbol = AppCategories.symbolFor(tx.currency);
+        final dateFormat = DateFormat('d MMM');
 
-        return NeumorphicContainer(
-          padding: const EdgeInsets.all(AppConstants.spaceM),
-          child: Row(
-            children: [
-              Container(
-                width: 45,
-                height: 45,
-                decoration: BoxDecoration(
-                  color: (isExpense ? AppColors.expenseRed : AppColors.incomeGreen).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppConstants.radiusS),
-                ),
-                child: Icon(
-                  isExpense ? Icons.shopping_bag_outlined : Icons.payments_outlined,
-                  color: isExpense ? AppColors.expenseRed : AppColors.incomeGreen,
-                ),
-              ),
-              const SizedBox(width: AppConstants.spaceM),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      tx.description,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    Text(
-                      '${tx.category ?? 'Uncategorized'} • ${dateFormat.format(tx.transactionDate)}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${isExpense ? '-' : '+'}\$${tx.amount.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isExpense ? AppColors.expenseRed : AppColors.incomeGreen,
-                    ),
+        return GestureDetector(
+          onTap: () async {
+            AppLogger.d(_tag, 'Recent tx tapped: ${tx.id}');
+            final changed = await Navigator.of(context).push<bool>(
+              MaterialPageRoute(builder: (_) => TransactionDetailScreen(transaction: tx)),
+            );
+            if (changed == true) setState(() {});
+          },
+          child: NeumorphicContainer(
+            padding: const EdgeInsets.all(AppConstants.spaceM),
+            child: Row(
+              children: [
+                Container(
+                  width: 45,
+                  height: 45,
+                  decoration: BoxDecoration(
+                    color: typeColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(AppConstants.radiusS),
                   ),
-                ],
-              ),
-              const SizedBox(width: AppConstants.spaceS),
-              const Icon(Icons.more_vert, size: 18, color: Colors.grey),
-            ],
+                  child: Icon(AppCategories.iconFor(tx.category), color: typeColor),
+                ),
+                const SizedBox(width: AppConstants.spaceM),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              tx.description,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isIslamic)
+                            const Text('☽', style: TextStyle(fontSize: 11, color: AppColors.primaryGreen)),
+                        ],
+                      ),
+                      Text(
+                        '${tx.category ?? 'Uncategorized'} • ${dateFormat.format(tx.transactionDate)}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '${isExpense ? '-' : '+'}$symbol${tx.amount.toStringAsFixed(2)}',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: typeColor),
+                ),
+              ],
+            ),
           ),
         );
       },
